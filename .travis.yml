@@ -1,0 +1,129 @@
+language: php
+dist: precise
+
+branches:
+  only:
+    - master
+
+services:
+- mysql
+- postgresql
+matrix:
+  fast_finish: true
+  allow_failures:
+  - php: nightly
+
+env:
+  global:
+    - MAKEFLAGS=-j$(nproc)
+
+php:
+- 5.3
+- 5.4
+- 5.5
+- 5.6
+- 7.0
+- 7.1
+- 7.2
+- 7.3
+# - nightly
+sudo: required
+addons:
+  apt:
+    packages:
+    - ctags
+    - language-pack-de
+    - libaspell-dev
+    - libenchant-dev
+    - libgmp-dev
+    - libicu-dev
+    - libmcrypt-dev
+    - libpspell-dev
+    - librecode-dev
+    - libsasl2-dev
+    - libt1-dev
+    - libtidy-dev
+    - libxpm-dev
+    - locales
+    - re2c
+    # packages for gd variant
+    - libfreetype6
+    - libfreetype6-dev
+    - libpng12-0
+    - libpng12-dev
+    - libjpeg-dev
+    - libjpeg8-dev
+    - libjpeg8
+    # - libgd-dev this package doesn't exist on Ubuntu 12.04
+    # - libgd3 doesn't exists on Travis CI
+    - libxpm4
+    # packages for intl variant
+    - libicu-dev
+    # packages for openssl variant
+    - libssl-dev
+    - openssl
+    # packages for apxs2
+    - apache2
+install:
+  - composer install
+  - composer config --unset platform
+  - composer update phpunit/phpunit --with-dependencies
+before_script:
+# see if ccache is working
+- export USE_CCACHE=1
+- export PATH=/usr/lib/ccache:$PATH
+- phpenv rehash
+- export PATH=$PATH:$PWD/vendor/bin/
+- mkdir -p -v .phpbrew/build .phpbrew/distfiles .phpbrew/php
+- rm phpbrew
+- cp -v shell/bashrc .phpbrew/
+script:
+  - source shell/bashrc
+  - mkdir -p build/logs
+  - vendor/bin/phpunit --exclude-group mayignore --coverage-clover build/logs/clover.xml
+after_success:
+  - ccache -s
+  - wget https://github.com/php-coveralls/php-coveralls/releases/download/v1.1.0/coveralls.phar
+  - travis_retry php coveralls.phar -v
+cache:
+  apt: true
+  ccache: true
+  directories:
+  - ".phpbrew/distfiles"
+  - ".phpbrew/cache"
+  - "$HOME/.ccache"
+  - "$HOME/.composer/cache"
+before_deploy:
+- make build
+deploy:
+- provider: s3
+  access_key_id: AKIAJCOXUMKVDHFVNS6Q
+  secret_access_key:
+    secure: FKUkXHugu4zB4hs6LEv399z6neV8jGZpJP/cTCvKsTiKiomZKnOznxMwZhYIXOAr6CzQvW+9zCp0IzZCZcIo6x7HBdgsiEfF/1yPx2zUuJbaiqa7XCkfFd5p1nKmNcprL/KXwvXOueZ5J7QhV67+x3kVArbt+uvm9glXBX/aHmM=
+  bucket: phpbrew
+  acl: public_read
+  upload-dir: travis-build/master
+  local_dir: build
+  skip_cleanup: true
+  on:
+    repo: phpbrew/phpbrew
+    branch: 'master'
+- provider: s3
+  access_key_id: AKIAJCOXUMKVDHFVNS6Q
+  secret_access_key:
+    secure: FKUkXHugu4zB4hs6LEv399z6neV8jGZpJP/cTCvKsTiKiomZKnOznxMwZhYIXOAr6CzQvW+9zCp0IzZCZcIo6x7HBdgsiEfF/1yPx2zUuJbaiqa7XCkfFd5p1nKmNcprL/KXwvXOueZ5J7QhV67+x3kVArbt+uvm9glXBX/aHmM=
+  bucket: phpbrew
+  acl: public_read
+  upload-dir: travis-build/develop
+  local_dir: build
+  skip_cleanup: true
+  on:
+    repo: phpbrew/phpbrew
+    branch: 'develop'
+notifications:
+  webhooks:
+    urls:
+    - https://webhooks.gitter.im/e/8a279012c99e209a89ae
+    on_success: change  # options: [always|never|change] default: always
+    on_failure: always  # options: [always|never|change] default: always
+    on_start: never     # options: [always|never|change] default: always

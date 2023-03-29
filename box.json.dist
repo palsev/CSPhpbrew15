@@ -1,0 +1,10 @@
+{
+    "output": "phpbrew",
+    "compactors": [
+        "KevinGH\\Box\\Compactor\\Json",
+        "KevinGH\\Box\\Compactor\\Php"
+    ],
+    "directories-bin": [
+        "shell"
+    ]
+}

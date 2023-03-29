@@ -1,0 +1,4 @@
+/vendor
+.phpbrew
+.phpcs.cache
+/build
